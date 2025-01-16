@@ -83,6 +83,10 @@ def write_to_csv(unsubscribe_data, output_dir=".", output_file_prefix="unsubscri
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")  # Format: YYYYMMDD_HHMMSS
     output_file = os.path.join(output_dir, f"{output_file_prefix}_{timestamp}.csv")
 
+    if not unsubscribe_data:
+        print("No unsubscribe links found. CSV file will not be created.")
+        return None
+
     with open(output_file, mode="w", newline="", encoding="utf-8") as file:
         writer = csv.writer(file)
         writer.writerow(["Company/Newsletter", "Unsubscribe Link"])
@@ -90,15 +94,19 @@ def write_to_csv(unsubscribe_data, output_dir=".", output_file_prefix="unsubscri
             writer.writerow([company, link])
 
     print(f"Unsubscribe links have been saved to '{output_file}'.")
+    return output_file
 
 
-# Main function
+
 def main():
     mail = connect_to_email()
     try:
         folder_name = filter_newsletters(mail)
         unsubscribe_data = extract_unsubscribe_links(mail, folder_name)
-        write_to_csv(unsubscribe_data)
-        print(f"Unsubscribe links have been saved to 'unsubscribe_links.csv'.")
+        output_file = write_to_csv(unsubscribe_data)
+        if output_file:
+            print(f"CSV file generated: {output_file}")
+        else:
+            print("No CSV file was generated.")
     finally:
         mail.logout()
