@@ -47,7 +47,7 @@ def extract_unsubscribe_links(mail, folder_name="Newsletters"):
 
     print(f"Found {len(email_ids)} emails in the '{folder_name}' folder.")
 
-    unsubscribe_data = {}
+    unsubscribe_data = []
 
     for email_id in email_ids:
         status, data = mail.fetch(email_id, "(RFC822)")
@@ -55,8 +55,8 @@ def extract_unsubscribe_links(mail, folder_name="Newsletters"):
         msg = email.message_from_bytes(raw_email)
 
         # Get the email subject and sender
-        subject = msg["subject"]
-        sender = msg["from"]
+        subject = msg["subject"] or "Unknown Subject"
+        sender = msg["from"] or "Unknown Sender"
 
         # Extract the email body
         html_content = None
@@ -96,8 +96,8 @@ def extract_unsubscribe_links(mail, folder_name="Newsletters"):
                 unsubscribe_link = link["href"]
 
                 # Avoid duplicates
-                if company_name not in unsubscribe_data:
-                    unsubscribe_data[company_name] = unsubscribe_link
+                if not any(company_name == row[0] for row in unsubscribe_data):
+                    unsubscribe_data.append([company_name, unsubscribe_link])
 
     print(f"Extracted {len(unsubscribe_data)} unsubscribe links.")
     return unsubscribe_data
@@ -114,9 +114,10 @@ def write_to_csv(unsubscribe_data, output_dir=".", output_file_prefix="unsubscri
 
     with open(output_file, mode="w", newline="", encoding="utf-8") as file:
         writer = csv.writer(file)
-        writer.writerow(["Company/Newsletter", "Unsubscribe Link"])
-        for company, link in unsubscribe_data.items():
-            writer.writerow([company, link])
+        # Write the header row
+        writer.writerow(["Newsletter Name", "Unsubscribe Link"])
+        # Write the data rows
+        writer.writerows(unsubscribe_data)
 
     print(f"Unsubscribe links have been saved to '{output_file}'.")
     return output_file
