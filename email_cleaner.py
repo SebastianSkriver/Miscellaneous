@@ -14,6 +14,7 @@ IMAP_SERVER = "imap.gmail.com"  # Change this if using a different email provide
 def connect_to_email():
     mail = imaplib.IMAP4_SSL(IMAP_SERVER)
     mail.login(EMAIL, PASSWORD)
+    print("Connected to email server.")
     return mail
 
 # Search for newsletter emails and move them to a folder
@@ -22,6 +23,8 @@ def filter_newsletters(mail, folder_name="Newsletters"):
     # Search for emails with common newsletter keywords
     status, messages = mail.search(None, '(OR SUBJECT "newsletter" SUBJECT "promotion")')
     email_ids = messages[0].split()
+
+    print(f"Found {len(email_ids)} emails matching the criteria.")
 
     # Create the folder if it doesn't exist
     try:
@@ -41,6 +44,8 @@ def extract_unsubscribe_links(mail, folder_name="Newsletters"):
     mail.select(folder_name)
     status, messages = mail.search(None, "ALL")
     email_ids = messages[0].split()
+
+    print(f"Found {len(email_ids)} emails in the '{folder_name}' folder.")
 
     unsubscribe_data = {}
 
@@ -75,6 +80,7 @@ def extract_unsubscribe_links(mail, folder_name="Newsletters"):
                 if company_name not in unsubscribe_data:
                     unsubscribe_data[company_name] = unsubscribe_link
 
+    print(f"Extracted {len(unsubscribe_data)} unsubscribe links.")
     return unsubscribe_data
 
 # Write unsubscribe links to a CSV file
@@ -96,8 +102,7 @@ def write_to_csv(unsubscribe_data, output_dir=".", output_file_prefix="unsubscri
     print(f"Unsubscribe links have been saved to '{output_file}'.")
     return output_file
 
-
-
+# Main function
 def main():
     mail = connect_to_email()
     try:
@@ -110,3 +115,6 @@ def main():
             print("No CSV file was generated.")
     finally:
         mail.logout()
+
+if __name__ == "__main__":
+    main()
