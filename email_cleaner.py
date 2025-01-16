@@ -59,12 +59,31 @@ def extract_unsubscribe_links(mail, folder_name="Newsletters"):
         sender = msg["from"]
 
         # Extract the email body
+        html_content = None
         if msg.is_multipart():
             for part in msg.walk():
                 if part.get_content_type() == "text/html":
-                    html_content = part.get_payload(decode=True).decode()
+                    try:
+                        # Attempt to decode using the specified charset
+                        charset = part.get_content_charset() or "utf-8"
+                        html_content = part.get_payload(decode=True).decode(charset)
+                    except (UnicodeDecodeError, LookupError):
+                        # Fallback to ISO-8859-1 if decoding fails
+                        print(f"Warning: Failed to decode email content. Falling back to ISO-8859-1.")
+                        html_content = part.get_payload(decode=True).decode("ISO-8859-1")
         else:
-            html_content = msg.get_payload(decode=True).decode()
+            try:
+                # Attempt to decode using the specified charset
+                charset = msg.get_content_charset() or "utf-8"
+                html_content = msg.get_payload(decode=True).decode(charset)
+            except (UnicodeDecodeError, LookupError):
+                # Fallback to ISO-8859-1 if decoding fails
+                print(f"Warning: Failed to decode email content. Falling back to ISO-8859-1.")
+                html_content = msg.get_payload(decode=True).decode("ISO-8859-1")
+
+        if not html_content:
+            print(f"Warning: No HTML content found in email from {sender}. Skipping.")
+            continue
 
         # Parse the HTML content
         soup = BeautifulSoup(html_content, "html.parser")
