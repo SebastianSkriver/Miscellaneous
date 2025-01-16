@@ -2,8 +2,6 @@ name: Email Cleaner
 
 on:
   workflow_dispatch: # Allows manual triggering of the workflow
-  schedule:
-    - cron: "0 0 * * *" # Runs daily at midnight (UTC)
 
 jobs:
   run-script:
