@@ -1,14 +1,23 @@
 import imaplib
 import email
 import os
-import csv
 from bs4 import BeautifulSoup
 from datetime import datetime
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 # Load email credentials from environment variables
 EMAIL = os.getenv("EMAIL_H4")
 PASSWORD = os.getenv("EMAIL_H4_PASSWORD")
 IMAP_SERVER = "imap.gmail.com"  # Change this if using a different email provider
+
+# Load SMTP credentials for sending email
+SMTP_SERVER = "smtp.gmail.com"  # Change this if using a different email provider
+SMTP_PORT = 587
+SENDER_EMAIL = os.getenv("EMAIL_H4")  # Use the same email for sending
+SENDER_PASSWORD = os.getenv("EMAIL_H4_PASSWORD")  # Use the same password
+RECIPIENT_EMAIL = os.getenv("EMAIL_H4")  # recipient email as an environment variable
 
 # Connect to the email server
 def connect_to_email():
@@ -102,25 +111,54 @@ def extract_unsubscribe_links(mail, folder_name="Newsletters"):
     print(f"Extracted {len(unsubscribe_data)} unsubscribe links.")
     return unsubscribe_data
 
-# Write unsubscribe links to a CSV file
-def write_to_csv(unsubscribe_data, output_dir=".", output_file_prefix="unsubscribe_links"):
-    # Generate a unique filename with a timestamp
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")  # Format: YYYYMMDD_HHMMSS
-    output_file = os.path.join(output_dir, f"{output_file_prefix}_{timestamp}.csv")
+# Send the unsubscribe links via email in a table format
+def send_email_with_links(unsubscribe_data):
+    # Create the email
+    msg = MIMEMultipart("alternative")
+    msg['From'] = SENDER_EMAIL
+    msg['To'] = RECIPIENT_EMAIL
+    msg['Subject'] = "Unsubscribe Links"
 
-    if not unsubscribe_data:
-        print("No unsubscribe links found. CSV file will not be created.")
-        return None
+    # Create the HTML table
+    html = """
+    <html>
+    <body>
+        <p>Here are the unsubscribe links extracted from your emails:</p>
+        <table border="1" style="border-collapse: collapse; width: 100%;">
+            <thead>
+                <tr>
+                    <th style="padding: 8px; text-align: left; background-color: #f2f2f2;">Newsletter Name</th>
+                    <th style="padding: 8px; text-align: left; background-color: #f2f2f2;">Unsubscribe Link</th>
+                </tr>
+            </thead>
+            <tbody>
+    """
 
-    with open(output_file, mode="w", newline="", encoding="utf-8") as file:
-        writer = csv.writer(file)
-        # Write the header row
-        writer.writerow(["Newsletter Name", "Unsubscribe Link"])
-        # Write the data rows
-        writer.writerows(unsubscribe_data)
+    for company_name, unsubscribe_link in unsubscribe_data:
+        html += f"""
+                <tr>
+                    <td style="padding: 8px; text-align: left;">{company_name}</td>
+                    <td style="padding: 8px; text-align: left;"><a href="{unsubscribe_link}">{unsubscribe_link}</a></td>
+                </tr>
+        """
 
-    print(f"Unsubscribe links have been saved to '{output_file}'.")
-    return output_file
+    html += """
+            </tbody>
+        </table>
+    </body>
+    </html>
+    """
+
+    # Attach the HTML content to the email
+    msg.attach(MIMEText(html, "html"))
+
+    # Send the email
+    with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+        server.starttls()
+        server.login(SENDER_EMAIL, SENDER_PASSWORD)
+        server.send_message(msg)
+
+    print(f"Email sent to {RECIPIENT_EMAIL} with unsubscribe links.")
 
 # Main function
 def main():
@@ -128,11 +166,10 @@ def main():
     try:
         folder_name = filter_newsletters(mail)
         unsubscribe_data = extract_unsubscribe_links(mail, folder_name)
-        output_file = write_to_csv(unsubscribe_data)
-        if output_file:
-            print(f"CSV file generated: {output_file}")
+        if unsubscribe_data:
+            send_email_with_links(unsubscribe_data)  # Send the unsubscribe links via email
         else:
-            print("No CSV file was generated.")
+            print("No unsubscribe links were found.")
     finally:
         mail.logout()
 
