@@ -28,8 +28,15 @@ jobs:
       run: |
         python email_cleaner.py
 
+    - name: Find and Upload CSV file
+      run: |
+        ls -l
+        CSV_FILE=$(ls unsubscribe_links_*.csv | head -n 1)
+        echo "Found CSV file: $CSV_FILE"
+        echo "CSV_FILE=$CSV_FILE" >> $GITHUB_ENV
+        
     - name: Upload CSV file
       uses: actions/upload-artifact@v3
       with:
         name: unsubscribe_links
-        path: unsubscribe_links.csv
+        path: ${{ env.CSV_FILE }}
